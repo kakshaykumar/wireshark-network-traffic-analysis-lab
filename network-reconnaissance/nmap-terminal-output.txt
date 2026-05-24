@@ -1,4 +1,5 @@
-                                                                                                                            PCAP
+NMAP TERMINAL OUTPUT
+
 ICMP PING SWEEP 
 $ sudo nmap -sn 192.168.110.130/24
 Starting Nmap 7.98 ( https://nmap.org ) at 2026-05-24 03:31 -0400
@@ -56,7 +57,7 @@ MAC Address: 00:0C:29:51:97:C4 (VMware)
 
 Nmap done: 1 IP address (1 host up) scanned in 4.78 seconds
 
-Service and Version Detection
+SERVICE AND VERSION DETECTION
 $ nmap -sV 192.168.110.130
 Starting Nmap 7.98 ( https://nmap.org ) at 2026-05-24 03:40 -0400
 Nmap scan report for 192.168.110.130
@@ -72,7 +73,7 @@ Service Info: OSs: Unix, Linux; CPE: cpe:/o:linux:linux_kernel
 Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
 Nmap done: 1 IP address (1 host up) scanned in 10.95 seconds
 
-Aggressive scan
+AGGRESSIVE SCAN
 $ sudo nmap -A 192.168.110.130 
 Starting Nmap 7.98 ( https://nmap.org ) at 2026-05-24 03:43 -0400
 Nmap scan report for 192.168.110.130
