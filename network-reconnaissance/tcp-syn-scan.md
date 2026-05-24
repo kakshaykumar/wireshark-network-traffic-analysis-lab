@@ -37,6 +37,8 @@ PORT   STATE  SERVICE
 Scan completed in 4.78 seconds
 ```
 
+*Full terminal output: [`nmap-terminal-output.txt`](nmap-terminal-output.txt)*
+
 ---
 
 ## Wireshark Filters
