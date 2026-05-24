@@ -121,7 +121,7 @@ An explosion of mixed-protocol traffic — FTP probes, HTTP requests to unusual 
 
 **Aggressive scan: multi-protocol packet list with FTP USER anonymous probe expanded in middle pane**
 
-![Aggressive scan FTP anonymous probe](screenshots/agressive-scan.png)
+![Aggressive scan FTP anonymous probe](screenshots/aggressive-scan.png)
 
 ---
 
