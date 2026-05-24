@@ -41,16 +41,19 @@ FTP provides zero encryption. Every packet in the authentication sequence appear
 Response: 220 (vsFTPd 3.0.5)     ← server banner — version exposed
 Request:  USER labuser            ← username in plaintext
 Response: 331 Please specify the password.
-Request:  PASS welcome            ← attempt 1 — visible
-Request:  PASS adminpass123       ← attempt 2 — visible
-Request:  PASS password           ← attempt 3 — visible
-Request:  PASS 123456             ← attempt 4 — visible
-Request:  PASS qwerty             ← attempt 5 — visible
-Request:  PASS password123        ← attempt 6 — visible
-Request:  PASS test123            ← attempt 7 — visible
-Request:  PASS admin              ← attempt 8 — visible
-Request:  PASS labuser            ← attempt 9 — CORRECT PASSWORD
-Response: 230 Login successful.   ← authentication confirmed
+Request:  PASS admin              ← attempt 1 — visible
+Request:  PASS password           ← attempt 2 — visible
+Request:  PASS 123456             ← attempt 3 — visible
+Request:  PASS welcome            ← attempt 4 — visible
+Request:  PASS letmein            ← attempt 5 — visible
+Request:  PASS qwerty             ← attempt 6 — visible
+Request:  PASS labpass123         ← attempt 7 — visible
+Request:  PASS labuser            ← attempt 8 — CORRECT PASSWORD
+Response: 230 Login successful.
+Request:  PASS test123            ← attempt 9 (parallel thread, sent after success)
+Request:  PASS password123        ← attempt 10 — visible
+Request:  PASS admin123           ← attempt 11 — visible
+Request:  PASS adminpass123       ← attempt 12 — visible
 Response: 530 Login incorrect.    ← all other attempts failed
 ```
 
