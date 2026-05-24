@@ -1,0 +1,112 @@
+                                                                                                                            PCAP
+ICMP PING SWEEP 
+$ sudo nmap -sn 192.168.110.130/24
+Starting Nmap 7.98 ( https://nmap.org ) at 2026-05-24 03:31 -0400
+Nmap scan report for 192.168.110.1
+Host is up (0.00030s latency).
+MAC Address: 00:50:56:C0:00:01 (VMware)
+Nmap scan report for 192.168.110.130
+Host is up (0.00046s latency).
+MAC Address: 00:0C:29:51:97:C4 (VMware)
+Nmap scan report for 192.168.110.254
+Host is up (0.00034s latency).
+MAC Address: 00:50:56:E5:C4:DE (VMware)
+Nmap scan report for 192.168.110.132
+Host is up.
+Nmap done: 256 IP addresses (4 hosts up) scanned in 12.43 seconds
+                                                                                                                             
+$ ping 192.168.110.130 -c 8       
+PING 192.168.110.130 (192.168.110.130) 56(84) bytes of data.
+64 bytes from 192.168.110.130: icmp_seq=1 ttl=64 time=0.980 ms
+64 bytes from 192.168.110.130: icmp_seq=2 ttl=64 time=1.32 ms
+64 bytes from 192.168.110.130: icmp_seq=3 ttl=64 time=1.56 ms
+64 bytes from 192.168.110.130: icmp_seq=4 ttl=64 time=1.98 ms
+64 bytes from 192.168.110.130: icmp_seq=5 ttl=64 time=1.17 ms
+64 bytes from 192.168.110.130: icmp_seq=6 ttl=64 time=1.97 ms
+64 bytes from 192.168.110.130: icmp_seq=7 ttl=64 time=1.62 ms
+64 bytes from 192.168.110.130: icmp_seq=8 ttl=64 time=1.64 ms
+
+--- 192.168.110.130 ping statistics ---
+8 packets transmitted, 8 received, 0% packet loss, time 7014ms
+rtt min/avg/max/mdev = 0.980/1.529/1.977/0.334 ms
+                                                                                                                             
+$ sudo nmap -sn -PE --send-ip 192.168.110.130/24
+Starting Nmap 7.98 ( https://nmap.org ) at 2026-05-24 03:32 -0400
+Nmap scan report for 192.168.110.1
+Host is up (0.00081s latency).
+MAC Address: 00:00:80:01:F7:60 (Cray Communications A/S)
+Nmap scan report for 192.168.110.130
+Host is up (0.00095s latency).
+MAC Address: 00:00:40:01:FF:9A (Applicon)
+Nmap scan report for 192.168.110.132
+Host is up.
+Nmap done: 256 IP addresses (3 hosts up) scanned in 14.28 seconds
+
+TCP SYN SCAN
+$ sudo nmap -sS 192.168.110.130                
+Starting Nmap 7.98 ( https://nmap.org ) at 2026-05-24 03:38 -0400
+Nmap scan report for 192.168.110.130
+Host is up (0.00015s latency).
+Not shown: 997 closed tcp ports (reset)
+PORT   STATE SERVICE
+21/tcp open  ftp
+22/tcp open  ssh
+80/tcp open  http
+MAC Address: 00:0C:29:51:97:C4 (VMware)
+
+Nmap done: 1 IP address (1 host up) scanned in 4.78 seconds
+
+Service and Version Detection
+$ nmap -sV 192.168.110.130
+Starting Nmap 7.98 ( https://nmap.org ) at 2026-05-24 03:40 -0400
+Nmap scan report for 192.168.110.130
+Host is up (0.00014s latency).
+Not shown: 997 closed tcp ports (reset)
+PORT   STATE SERVICE VERSION
+21/tcp open  ftp     vsftpd 3.0.5
+22/tcp open  ssh     OpenSSH 10.2p1 Ubuntu 2ubuntu3.2 (Ubuntu Linux; protocol 2.0)
+80/tcp open  http    Apache httpd 2.4.66 ((Ubuntu))
+MAC Address: 00:0C:29:51:97:C4 (VMware)
+Service Info: OSs: Unix, Linux; CPE: cpe:/o:linux:linux_kernel
+
+Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 10.95 seconds
+
+Aggressive scan
+$ sudo nmap -A 192.168.110.130 
+Starting Nmap 7.98 ( https://nmap.org ) at 2026-05-24 03:43 -0400
+Nmap scan report for 192.168.110.130
+Host is up (0.0014s latency).
+Not shown: 997 closed tcp ports (reset)
+PORT   STATE SERVICE VERSION
+21/tcp open  ftp     vsftpd 3.0.5
+22/tcp open  ssh     OpenSSH 10.2p1 Ubuntu 2ubuntu3.2 (Ubuntu Linux; protocol 2.0)
+80/tcp open  http    Apache httpd 2.4.66 ((Ubuntu))
+|_http-title: Apache2 Ubuntu Default Page: It works
+|_http-server-header: Apache/2.4.66 (Ubuntu)
+MAC Address: 00:0C:29:51:97:C4 (VMware)
+No exact OS matches for host (If you know what OS is running on it, see https://nmap.org/submit/ ).
+TCP/IP fingerprint:
+OS:SCAN(V=7.98%E=4%D=5/24%OT=21%CT=1%CU=42974%PV=Y%DS=1%DC=D%G=Y%M=000C29%T
+OS:M=6A12AC25%P=x86_64-pc-linux-gnu)SEQ(SP=103%GCD=1%ISR=10E%TI=Z%CI=Z%TS=2
+OS:2)SEQ(SP=104%GCD=1%ISR=10C%TI=Z%CI=Z%II=I%TS=21)SEQ(SP=107%GCD=1%ISR=10A
+OS:%TI=Z%CI=Z%II=I%TS=21)SEQ(SP=108%GCD=1%ISR=10B%TI=Z%CI=Z%II=I%TS=21)SEQ(
+OS:SP=FA%GCD=1%ISR=10F%TI=Z%CI=Z%II=I%TS=21)OPS(O1=M5B4ST11NWA%O2=M5B4ST11N
+OS:WA%O3=M5B4NNT11NWA%O4=M5B4ST11NWA%O5=M5B4ST11NWA%O6=M5B4ST11)WIN(W1=FE88
+OS:%W2=FE88%W3=FE88%W4=FE88%W5=FE88%W6=FE88)ECN(R=Y%DF=Y%T=40%W=FAF0%O=M5B4
+OS:NNSNWA%CC=Y%Q=)T1(R=Y%DF=Y%T=40%S=O%A=S+%F=AS%RD=0%Q=)T2(R=N)T3(R=N)T4(R
+OS:=Y%DF=Y%T=40%W=0%S=A%A=Z%F=R%O=%RD=0%Q=)T5(R=Y%DF=Y%T=40%W=0%S=Z%A=S+%F=
+OS:AR%O=%RD=0%Q=)T6(R=Y%DF=Y%T=40%W=0%S=A%A=Z%F=R%O=%RD=0%Q=)T7(R=Y%DF=Y%T=
+OS:40%W=0%S=Z%A=S+%F=AR%O=%RD=0%Q=)U1(R=Y%DF=N%T=40%IPL=164%UN=0%RIPL=G%RID
+OS:=G%RIPCK=G%RUCK=G%RUD=G)IE(R=Y%DFI=N%T=40%CD=S)
+
+Network Distance: 1 hop
+Service Info: OSs: Unix, Linux; CPE: cpe:/o:linux:linux_kernel
+
+TRACEROUTE
+HOP RTT     ADDRESS
+1   1.39 ms 192.168.110.130
+
+OS and Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 25.68 seconds
+
