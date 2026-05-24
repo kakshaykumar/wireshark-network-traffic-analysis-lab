@@ -34,7 +34,7 @@ Nmap scan report for 192.168.110.254    → VMware DHCP        (up)
 Nmap scan report for 192.168.110.132    → Kali (self)        (up)
 4 hosts up — 256 addresses scanned in 12.43 seconds
 ```
-
+*Full terminal output: [`nmap-terminal-output.txt`](nmap-terminal-output.txt)*
 ---
 
 ## Wireshark Filter
