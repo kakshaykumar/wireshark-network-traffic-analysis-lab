@@ -34,6 +34,7 @@ PORT   STATE SERVICE VERSION
 80/tcp open  http    Apache httpd 2.4.66 ((Ubuntu))
 Service Info: OSs: Unix, Linux; CPE: cpe:/o:linux:linux_kernel
 ```
+*Full terminal output: [`nmap-terminal-output.txt`](nmap-terminal-output.txt)*
 
 ---
 
