@@ -2,7 +2,7 @@
 
 ## Overview
 
-A brute-force credential attack was executed against the FTP service on the target host. Unlike SSH, FTP transmits all authentication data in cleartext — every username and password attempt is transmitted as readable text on the wire. The complete attack, including every tested credential and the confirmed successful entry, is recoverable from the packet capture without any decryption or specialised tooling.
+A brute-force credential attack has been executed against the FTP service on the target host. Unlike SSH, FTP transmits all authentication data in cleartext, every username and password attempt is transmitted as readable text on the wire. The complete attack, including every tested credential and the confirmed successful entry, is recoverable from the packet capture without any decryption or specialised tooling.
 
 **Capture file:** [`ftp-credential-attack.pcapng`](../pcap-files/authentication-attacks/ftp-credential-attack.pcapng)
 
