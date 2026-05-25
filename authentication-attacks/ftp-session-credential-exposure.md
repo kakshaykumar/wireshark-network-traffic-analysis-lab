@@ -1,26 +1,31 @@
-# FTP Credential Capture
+# FTP Session Credential Exposure
 
-## Objective
-Demonstrate what a network observer sees during a single FTP session — showing that credentials, system information, and the complete post-login session are all transmitted in cleartext.
+## Overview
+
+A single authenticated FTP session was established to document the full extent of information exposed during normal FTP usage — beyond just credentials. While the brute-force scenario demonstrates credential exposure at volume, this scenario captures a clean individual session to show what any observer on the network path sees when a user authenticates over FTP: credentials, system information, directory paths, and the complete command exchange.
+
+**Capture file:** [`ftp-session-credential-exposure.pcapng`](../pcap-files/authentication-attacks/ftp-session-credential-exposure.pcapng)
 
 ---
 
-## Lab Setup
+## Environment
+
 | Property | Value |
 |----------|-------|
-| Attacker | Kali Linux — 192.168.110.132 |
-| Target | Ubuntu 22.04 — 192.168.110.130 (vsftpd 3.0.5, port 21) |
-| Capture interface | Ubuntu ens37 (defender perspective) |
-| Capture file | `ch2c-ftp-clean-login.pcapng` |
+| Source | 192.168.110.132 (Kali Linux) |
+| Target | 192.168.110.130 (Ubuntu — vsftpd 3.0.5, port 21) |
+| Interface captured | Ubuntu ens37 (defender perspective) |
+| Capture perspective | Inbound traffic at target |
 
 ---
 
-## Command Used
+## Commands Used
 
 ```bash
+# Manual FTP login — interactive session
 ftp 192.168.110.130
-# Username: labuser
-# Password: labuser
+# At prompt → Username: labuser
+# At prompt → Password: labuser
 ```
 
 ---
@@ -33,83 +38,80 @@ ftp
 
 ---
 
-## Traffic Analysis
+## Analysis
 
-### Complete session in 39 packets
+### Complete Session Captured — 39 Packets
 
-The entire FTP session — from connection to logout — is captured in plaintext:
+The entire session from TCP connection through logout is contained in 39 packets. Every exchange is in plaintext:
 
 ```
-220 (vsFTPd 3.0.5)                           ← server banner
-USER labuser                                  ← username
+220 (vsFTPd 3.0.5)                          ← server banner
+USER labuser                                 ← username
 331 Please specify the password.
-PASS labuser                                  ← password in cleartext
+PASS labuser                                 ← password in cleartext
 230 Login successful.
-SYST → 215 UNIX Type: L8                     ← OS type exposed
-FEAT → 211-Features: EPRT, PASV              ← supported features
-EPSV → 229 Entering Extended Passive Mode    ← data channel negotiated
-LIST → 150/226                               ← directory listing transferred
-PWD → 257 "/home/labuser" is the current directory  ← full path exposed
+SYST → 215 UNIX Type: L8                    ← OS type returned
+FEAT → 211-Features: EPRT, PASV             ← supported features
+EPSV → 229 Entering Extended Passive Mode   ← data channel negotiated
+LIST → 150/226                              ← directory listing transferred
+PWD  → 257 "/home/labuser" is the current directory  ← full path disclosed
 QUIT → 221 Goodbye.
 ```
 
-The password `labuser` appears in the packet list at row 10 — readable in the Info column without clicking anything.
+The password `labuser` appears at packet 10 — readable directly in the Wireshark Info column without expanding any packet details.
 
-### What a passive observer learns from one session
+### Scope of Exposure
 
-| Intelligence | Value |
-|-------------|-------|
-| Username | labuser |
-| Password | labuser |
-| FTP software | vsftpd 3.0.5 |
+A passive observer capturing this session recovers the following from a single user's normal activity:
+
+| Category | Exposed Information |
+|----------|-------------------|
+| Authentication | Username: `labuser` / Password: `labuser` |
+| Software | vsftpd 3.0.5 |
 | OS type | UNIX Type: L8 (Linux) |
-| Home directory | /home/labuser |
-| Supported protocols | EPRT, PASV |
+| Home directory | `/home/labuser` |
+| Supported protocols | EPRT, PASV (passive mode) |
+| Session activity | Directory listing contents, current path |
 
-Complete lateral movement intelligence from passive observation of one user session.
+No attack tooling is required. Passive monitoring of port 21 traffic captures this in its entirety.
 
-### Critical credential weakness
+### Password Equals Username
 
-`password = username`. This is one of the most common patterns in real-world credential breaches. It indicates: default credentials never changed, or password policy enforcement is absent. It would be cracked in the first attempt of any basic wordlist.
-
----
-
-## Attacker Perspective
-Zero effort required beyond observing the traffic. No active attack, no brute force, no tooling — passive network observation is sufficient to obtain the complete credential and system context.
-
-## Defender Perspective
-`PASS labuser` is visible directly in the Wireshark packet list Info column — no middle pane expansion, no Follow TCP Stream, no decryption. A network tap monitoring port 21 captures this automatically. The credential, home path, and OS type are all exposed in one observed session.
+The credential in use — `labuser:labuser` — uses a password identical to the account username. This is one of the most commonly compromised credential patterns due to its predictability. It suggests either that the default credential was never modified after account creation, or that no password complexity policy is enforced.
 
 ---
 
-## Screenshot
+## Evidence
 
-**FTP clean login: PASS labuser highlighted in packet list. Middle pane confirms Request arg: labuser. Hex pane shows raw bytes spelling out the password.**
+**Figure 1 — FTP session: PASS labuser visible in packet list and expanded in packet details. Full session flow from SYN through QUIT visible.**
 
-![FTP clean login credential exposure](screenshots/ftp-clean-login.png)
+*Row 10 highlighted: `Request: PASS labuser`. Middle pane confirms `Request arg: labuser`. Hex pane shows raw bytes spelling the password.*
+
+![FTP plaintext credential exposure](screenshots/ftp-plaintext-credential-exposure.png)
 
 ---
 
 ## Key Findings
 
-- `PASS labuser` readable in the packet list Info column — no analysis required
-- Complete post-login session context exposed: OS type, directory path, feature list
-- Password = username — crackable in the first attempt of any wordlist
-- Passive observation only — no attack tool required to capture this
+- **Password visible in packet list Info column** — no packet expansion or filtering required
+- **Full session context exposed** — OS type, directory path, supported features, and session commands all transmitted in cleartext
+- **39 packets captures a complete authentication and browse session**
+- **Password equals username** — predictable credential pattern; compromised in the first attempt of any basic wordlist
+- **Passive observation only** — no active attack required; any device on the network path with a packet capture capability recovers this data automatically
 
 ---
 
 ## MITRE ATT&CK
 
-| ID | Technique |
-|----|-----------|
-| T1040 | Network Sniffing |
+| ID | Technique | Tactic |
+|----|-----------|--------|
+| T1040 | Network Sniffing | Credential Access |
 
 ---
 
-## Defensive Recommendations
+## Detection Recommendations
 
-- Disable FTP — passive observation of any FTP session captures the complete credential
-- Enforce credential uniqueness — password must not equal username; enforce at account creation
-- Audit existing accounts — check for accounts where the password matches the username
-- Migrate to SFTP — same functionality, full encryption, no additional service required
+- **Eliminate FTP** — this scenario requires zero attack capability; passive network monitoring on port 21 captures credentials automatically from any legitimate user session
+- **Audit active accounts** — identify all accounts where the password hash matches the username; enforce a change on first login or via policy
+- **Migrate to SFTP** — the OpenSSH SFTP subsystem provides identical file transfer functionality with full session encryption: `Subsystem sftp /usr/lib/openssh/sftp-server`
+- **Access logging** — regardless of protocol, log all authentication events including source IP, username, and timestamp for post-incident correlation
