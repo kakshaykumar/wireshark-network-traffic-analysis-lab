@@ -27,7 +27,7 @@ A brute-force credential attack was executed against an HTTP Basic Authenticatio
 hydra -l admin -P wordlist-credentials.txt http-get://192.168.110.130 -V
 ```
 
-**Wordlist used:** [`wordlist-credentials.txt`](wordlist-credentials.txt)
+**Wordlist used:** [`simulated-credential-wordlist.txt`](simulated-credential-wordlist.txt)
 
 ---
 
