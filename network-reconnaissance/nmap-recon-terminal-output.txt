@@ -1,5 +1,7 @@
 NMAP TERMINAL OUTPUT
 
+---
+
 ICMP PING SWEEP 
 $ sudo nmap -sn 192.168.110.130/24
 Starting Nmap 7.98 ( https://nmap.org ) at 2026-05-24 03:31 -0400
@@ -15,7 +17,8 @@ MAC Address: 00:50:56:E5:C4:DE (VMware)
 Nmap scan report for 192.168.110.132
 Host is up.
 Nmap done: 256 IP addresses (4 hosts up) scanned in 12.43 seconds
-                                                                                                                             
+
+
 $ ping 192.168.110.130 -c 8       
 PING 192.168.110.130 (192.168.110.130) 56(84) bytes of data.
 64 bytes from 192.168.110.130: icmp_seq=1 ttl=64 time=0.980 ms
@@ -43,6 +46,8 @@ Nmap scan report for 192.168.110.132
 Host is up.
 Nmap done: 256 IP addresses (3 hosts up) scanned in 14.28 seconds
 
+---
+
 TCP SYN SCAN
 $ sudo nmap -sS 192.168.110.130                
 Starting Nmap 7.98 ( https://nmap.org ) at 2026-05-24 03:38 -0400
@@ -56,6 +61,8 @@ PORT   STATE SERVICE
 MAC Address: 00:0C:29:51:97:C4 (VMware)
 
 Nmap done: 1 IP address (1 host up) scanned in 4.78 seconds
+
+---
 
 SERVICE AND VERSION DETECTION
 $ nmap -sV 192.168.110.130
@@ -72,6 +79,8 @@ Service Info: OSs: Unix, Linux; CPE: cpe:/o:linux:linux_kernel
 
 Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
 Nmap done: 1 IP address (1 host up) scanned in 10.95 seconds
+
+---
 
 AGGRESSIVE SCAN
 $ sudo nmap -A 192.168.110.130 
