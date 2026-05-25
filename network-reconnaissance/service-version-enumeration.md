@@ -1,40 +1,33 @@
-# Service and Version Detection
+# Service Version Enumeration
 
-## Objective
-Demonstrate how Nmap's version detection retrieves exact software versions through banner grabbing, and how that information directly enables targeted attack planning.
+## Overview
+
+Service version detection was performed against the three open ports identified during the port scan. Unlike the SYN scan, version detection requires completing full TCP connections to retrieve service banners — the server-provided strings that identify the software and version running on each port. All three services returned version information, providing a complete picture of the target's software stack from a single scan.
+
+**Capture file:** [`service-version-enumeration.pcapng`](../pcap-files/network-reconnaissance/service-version-enumeration.pcapng)
 
 ---
 
-## Lab Setup
+## Environment
+
 | Property | Value |
 |----------|-------|
-| Attacker | Kali Linux — 192.168.110.132 |
-| Target | Ubuntu 22.04 — 192.168.110.130 |
-| Capture interface | Kali ens37 (attacker perspective) |
-| Capture file | `version-detection.pcapng` |
+| Source | 192.168.110.132 (Kali Linux) |
+| Target | 192.168.110.130 (Ubuntu) |
+| Interface captured | ens37 (Host-only network) |
+| Capture perspective | Attacker interface |
 
 ---
 
-## Command Used
+## Commands Used
 
 ```bash
+# Service and version detection
+# Note: without sudo, falls back to TCP connect scan (full handshake)
 nmap -sV 192.168.110.130
 ```
 
-Without `sudo`, `-sV` falls back to a TCP connect scan (full handshake). This is visible in the capture as complete connections rather than half-open probes.
-
----
-
-## Nmap Output
-
-```
-PORT   STATE SERVICE VERSION
-21/tcp open  ftp     vsftpd 3.0.5
-22/tcp open  ssh     OpenSSH 10.2p1 Ubuntu 2ubuntu3.2 (Ubuntu Linux; protocol 2.0)
-80/tcp open  http    Apache httpd 2.4.66 ((Ubuntu))
-Service Info: OSs: Unix, Linux; CPE: cpe:/o:linux:linux_kernel
-```
-*Full terminal output: [`nmap-terminal-output.txt`](nmap-terminal-output.txt)*
+Full terminal output: [`nmap-recon-terminal-output.txt`](nmap-recon-terminal-output.txt)
 
 ---
 
@@ -46,87 +39,104 @@ tcp and ip.addr == 192.168.110.130
 
 ---
 
-## Traffic Analysis
+## Analysis
 
-### Full TCP handshake vs SYN scan
-
-Version detection completes full connections to retrieve banners — visually distinct from the SYN scan's RST pattern:
+### Version Detection Results
 
 ```
-Kali → Ubuntu:21   [SYN]               ← connection attempt
-Ubuntu → Kali      [SYN, ACK]          ← accepted
-Kali → Ubuntu:21   [ACK]               ← handshake COMPLETED
-Ubuntu → Kali      220 (vsFTPd 3.0.5)  ← banner returned
-Kali → Ubuntu:21   [FIN, ACK]          ← graceful close
+PORT   STATE SERVICE VERSION
+21/tcp open  ftp     vsftpd 3.0.5
+22/tcp open  ssh     OpenSSH 10.2p1 Ubuntu 2ubuntu3.2 (Ubuntu Linux; protocol 2.0)
+80/tcp open  http    Apache httpd 2.4.66 ((Ubuntu))
+Service Info: OSs: Unix, Linux; CPE: cpe:/o:linux:linux_kernel
 ```
 
-### Banners retrieved
+Exact software versions were retrieved for all three services in 10.95 seconds.
+
+### Full Handshake vs SYN Scan — Traffic Difference
+
+Version detection produces noticeably different traffic from the SYN scan. Where the SYN scan sends half-open probes and terminates with RST, version detection completes full TCP connections and exchanges application data:
+
+```
+# Version detection — full connection established
+192.168.110.132 → 192.168.110.130:21  [SYN]
+192.168.110.130 → 192.168.110.132     [SYN, ACK]
+192.168.110.132 → 192.168.110.130:21  [ACK]           ← handshake completes
+192.168.110.130 → 192.168.110.132     FTP: 220 (vsFTPd 3.0.5)  ← banner returned
+192.168.110.132 → 192.168.110.130:21  [FIN, ACK]      ← graceful close
+```
+
+The presence of ACK packets completing the handshake, followed by application data and a graceful FIN close, distinguishes version detection traffic from SYN scan traffic in any packet capture.
+
+### Banners Retrieved
 
 **FTP (port 21):**
 ```
 220 (vsFTPd 3.0.5)
 ```
+Discloses the FTP daemon name and exact version number.
 
 **SSH (port 22):**
 ```
 SSH-2.0-OpenSSH_10.2p1 Ubuntu-2ubuntu3.2
 ```
+Discloses SSH protocol version, OpenSSH release, Ubuntu package version, and OS distribution.
 
 **HTTP (port 80):**
 ```
 Server: Apache/2.4.66 (Ubuntu)
 ```
-Apache's default page also exposed: `Apache2 Ubuntu Default Page: It works` — confirming a default installation with no custom application deployed.
+Discloses web server software, version, and OS distribution. The HTTP response body additionally confirmed a default Apache installation: `Apache2 Ubuntu Default Page: It works` — indicating no custom application is deployed.
 
-### Why version information is dangerous
+### Security Implication of Version Disclosure
 
-Each string maps directly to public vulnerability databases:
-- `vsftpd 3.0.5` → searchable in NVD, Exploit-DB
-- `OpenSSH 10.2p1` → any known CVEs for this release identifiable
-- `Apache 2.4.66` → patch level determines vulnerability exposure
+Each version string maps directly to searchable vulnerability databases (NVD, Exploit-DB, CVE databases). An attacker with this output can immediately query for known vulnerabilities affecting these specific releases:
 
-Complete attack surface intelligence from a single 10.95-second scan.
+| Service | Version Exposed | Information Disclosed |
+|---------|----------------|----------------------|
+| vsftpd | 3.0.5 | FTP daemon, exact release |
+| OpenSSH | 10.2p1 | SSH release, Ubuntu package, OS distro |
+| Apache | 2.4.66 | Web server release, OS distro |
 
----
-
-## Attacker Perspective
-Exact software versions for all three services obtained in under 11 seconds. Sufficient to proceed to CVE lookup and targeted exploitation without further reconnaissance.
-
-## Defender Perspective
-Rapid full connections from 192.168.110.132 to ports 21, 22, and 80 in succession, each closing after minimal data exchange. Pattern — rapid multi-service connections with minimal data transfer — is characteristic of automated banner grabbing. FTP banner delivered in cleartext and visible to any observer.
+The OS distribution (Ubuntu) and kernel type (Linux) were also inferred from the SSH banner and CPE data — OS-level intelligence without running a dedicated OS detection scan.
 
 ---
 
-## Screenshot
+## Evidence
 
-**Version detection: FTP banner 220 vsFTPd 3.0.5 expanded. SSH and HTTP banners visible in packet list Info column.**
+**Figure 1 — Version detection capture: full TCP connections and FTP banner expanded**
 
-![Version detection banner grab](screenshots/version-detection.png)
+*Packet list shows SYN-ACK-data-FIN pattern. FTP banner `220 (vsFTPd 3.0.5)` expanded in packet details.*
+
+![Service banner enumeration FTP SSH HTTP](screenshots/service-version-enumeration-ftp-ssh-http.png)
 
 ---
 
 ## Key Findings
 
-- `vsftpd 3.0.5` — FTP version exposed via 220 banner
-- `OpenSSH 10.2p1 Ubuntu-2ubuntu3.2` — SSH version and Ubuntu package revision exposed
-- `Apache httpd 2.4.66 (Ubuntu)` — web server version and OS distribution exposed
-- Default Apache page confirmed — no custom application deployed
-- Full connections logged on target — `-sV` leaves an audit trail unlike the SYN scan
+- **vsftpd 3.0.5** — FTP version exposed via 220 service banner
+- **OpenSSH 10.2p1 Ubuntu-2ubuntu3.2** — SSH version, Ubuntu package revision, and OS distribution exposed
+- **Apache httpd 2.4.66 (Ubuntu)** — web server version and OS distribution exposed
+- **Default installation confirmed** — Apache default page served; no production application deployed
+- **Full TCP connections created** — unlike the SYN scan, version detection generates complete session logs on the target
+- **OS confirmed as Ubuntu Linux** — inferred from SSH banner and CPE metadata without running `-O`
 
 ---
 
 ## MITRE ATT&CK
 
-| ID | Technique |
-|----|-----------|
-| T1046 | Network Service Scanning |
-| T1082 | System Information Discovery |
+| ID | Technique | Tactic |
+|----|-----------|--------|
+| T1046 | Network Service Scanning | Discovery |
+| T1082 | System Information Discovery | Discovery |
 
 ---
 
-## Defensive Recommendations
+## Detection Recommendations
 
-- Suppress banners: `ServerTokens Prod` (Apache), `ftpd_banner=` (vsftpd), `DebianBanner no` (SSH)
-- Remove the Apache default page to avoid confirming infrastructure details
-- Replace FTP with SFTP — vsftpd transmits credentials in cleartext; SFTP is already available via OpenSSH on port 22
-- Keep software patched — known versions are immediately searchable against CVE databases
+- Suppress version banners to reduce information disclosure:
+  - Apache: `ServerTokens Prod` and `ServerSignature Off` in `/etc/apache2/apache2.conf`
+  - vsftpd: `ftpd_banner=FTP Server Ready` in `/etc/vsftpd.conf`
+  - SSH: `DebianBanner no` in `/etc/ssh/sshd_config`
+- Replace the Apache default page to avoid confirming infrastructure details
+- Rapid sequential full connections from one source across multiple ports in seconds indicates automated version scanning — alert on this pattern in connection logs
