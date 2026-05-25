@@ -65,6 +65,7 @@ wireshark-network-traffic-analysis-lab/
 │   ├── ftp-brute-force.md
 │   ├── ftp-credential-capture.md
 │   ├── http-basic-auth-attack.md
+│   ├── lab_wordlist.txt
 │   └── screenshots/
 │
 ├── protocol-analysis/
