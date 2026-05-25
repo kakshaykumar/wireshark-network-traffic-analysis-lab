@@ -2,7 +2,7 @@
 
 ## Overview
 
-DNS traffic was captured and analysed across multiple query types to document normal resolution behaviour and contrast it with anomalous patterns relevant to security monitoring. DNS is one of the most important protocols to baseline and monitor in any network environment — it is widely used by malware for command-and-control communication, data exfiltration, and detection evasion. Understanding what normal DNS looks like on the wire is a prerequisite for identifying what is abnormal.
+DNS traffic was captured and analysed across multiple query types to document normal resolution behaviour and contrast it with anomalous patterns relevant to security monitoring. DNS is one of the most important protocols to baseline and monitor in any network environment — it is widely used by malware for command-and-control communication, data exfiltration, and detection evasion. This baseline DNS capture helps show what normal query and response behavior looks like, which makes suspicious DNS activity easier to recognize later.
 
 **Capture file:** [`dns-query-nxdomain-analysis.pcapng`](../pcap-files/protocol-analysis/dns-query-nxdomain-analysis.pcapng)
 
