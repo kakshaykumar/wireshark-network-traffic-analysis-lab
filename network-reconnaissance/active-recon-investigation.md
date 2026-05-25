@@ -1,45 +1,32 @@
-# Aggressive Scan (OS Detection + NSE Scripts)
+# Active Reconnaissance Investigation
 
-## Objective
-Demonstrate how Nmap's aggressive scan combines OS fingerprinting, version detection, and NSE scripting into one comprehensive pass — and how its multi-protocol activity creates an unmistakable signature in packet captures.
+## Overview
+
+An aggressive scan was performed against the target to consolidate OS detection, version enumeration, NSE script execution, and traceroute into a single pass. This scan type generates the most diverse and voluminous traffic of the four reconnaissance techniques — combining TCP port probing, automated web path enumeration, FTP probing with default credentials, SSH service inspection, and ICMP-based route tracing simultaneously. The resulting traffic pattern and embedded tool signatures are unambiguous in packet captures.
+
+**Capture file:** [`nmap-active-network-recon.pcapng`](../pcap-files/network-reconnaissance/nmap-active-network-recon.pcapng)
 
 ---
 
-## Lab Setup
+## Environment
+
 | Property | Value |
 |----------|-------|
-| Attacker | Kali Linux — 192.168.110.132 |
-| Target | Ubuntu 22.04 — 192.168.110.130 |
-| Capture interface | Kali ens37 (attacker perspective) |
-| Capture file | `nmap-agressive-scan.pcapng` |
+| Source | 192.168.110.132 (Kali Linux) |
+| Target | 192.168.110.130 (Ubuntu) |
+| Interface captured | ens37 (Host-only network) |
+| Capture perspective | Attacker interface |
 
 ---
 
-## Command Used
+## Commands Used
 
 ```bash
+# Aggressive scan: OS detection + version detection + NSE scripts + traceroute
 sudo nmap -A 192.168.110.130
 ```
 
-`-A` enables OS detection, version detection, NSE script scanning, and traceroute simultaneously.
-
----
-
-## Nmap Output
-
-```
-PORT   STATE SERVICE VERSION
-21/tcp open  ftp     vsftpd 3.0.5
-22/tcp open  ssh     OpenSSH 10.2p1 Ubuntu 2ubuntu3.2
-80/tcp open  http    Apache httpd 2.4.66 ((Ubuntu))
-|_http-title: Apache2 Ubuntu Default Page: It works
-|_http-server-header: Apache/2.4.66 (Ubuntu)
-
-No exact OS matches — TCP/IP fingerprint generated
-Network Distance: 1 hop
-Duration: 25.68 seconds
-```
-*Full terminal output: [`nmap-terminal-output.txt`](nmap-terminal-output.txt)*
+Full terminal output: [`nmap-recon-terminal-output.txt`](nmap-recon-terminal-output.txt)
 
 ---
 
@@ -49,108 +36,138 @@ Duration: 25.68 seconds
 ip.addr == 192.168.110.130
 ```
 
+For protocol-specific views:
+```
+# HTTP NSE probes only
+http and ip.addr == 192.168.110.130
+
+# FTP probes only
+ftp and ip.addr == 192.168.110.130
+```
+
 ---
 
-## Traffic Analysis
+## Analysis
 
-### Multi-protocol activity — the aggressive scan signature
+### Scan Results
 
-| Protocol | Packets | Purpose |
+```
+PORT   STATE SERVICE VERSION
+21/tcp open  ftp     vsftpd 3.0.5
+22/tcp open  ssh     OpenSSH 10.2p1 Ubuntu 2ubuntu3.2
+80/tcp open  http    Apache httpd 2.4.66 ((Ubuntu))
+|_http-title: Apache2 Ubuntu Default Page: It works
+|_http-server-header: Apache/2.4.66 (Ubuntu)
+
+No exact OS matches found — TCP/IP fingerprint generated
+Network Distance: 1 hop
+Traceroute: 1.39 ms to 192.168.110.130
+Duration: 25.68 seconds
+```
+
+### Protocol Distribution in Capture
+
+The aggressive scan generated 2,896 packets in 25.68 seconds across six protocols simultaneously — a combination that no legitimate application produces:
+
+| Protocol | Packets | Activity |
 |----------|---------|---------|
-| TCP | 2653 | Port scan + full connections |
-| FTP | 55 | FTP service probing |
-| HTTP | 55 | Web service enumeration |
-| SSH | 31 | SSH service probing |
-| ICMP | 20 | Traceroute + OS probes |
+| TCP | 2,653 | Port probing + full connections |
+| FTP | 55 | Service probing with default credentials |
+| HTTP | 55 | Web path enumeration via NSE scripts |
+| SSH | 31 | SSH service fingerprinting |
+| ICMP | 20 | OS detection probes + traceroute |
 | DNS | 49 | Background resolution |
 
-No legitimate application generates mixed FTP, HTTP, SSH, and ICMP traffic simultaneously from the same source.
+### HTTP NSE Script Probes
 
-### HTTP NSE probes
-
-Nmap's default HTTP scripts sent the following requests automatically:
+Nmap's default HTTP scripts automatically sent the following requests to the web service:
 
 ```
-GET  /
-GET  /.git/HEAD         ← checks for exposed source code repository
-GET  /HNAP1             ← home network admin protocol probe
-GET  /evox/about        ← TP-Link/router admin panel check
-GET  /favicon.ico
-GET  /robots.txt
-POST /sdk               ← VMware SDK probe
-OPTIONS /
-PROPFIND /              ← WebDAV filesystem access check
+GET  /                    → baseline response check
+GET  /.git/HEAD           → exposed Git repository detection
+GET  /HNAP1               → home network admin protocol probe
+GET  /evox/about          → TP-Link/router admin panel check
+GET  /favicon.ico         → service identification
+GET  /robots.txt          → content and path discovery
+GET  /nmaplowercheck...   → Nmap internal validation
+POST /sdk                 → VMware SDK probe
+OPTIONS /                 → allowed HTTP methods check
+PROPFIND /                → WebDAV filesystem access check
 ```
 
-The `/.git/HEAD` probe is significant — Nmap automatically checks whether Git repositories are accidentally accessible on web servers, a common misconfiguration that exposes source code, credentials, and internal paths.
+The `GET /.git/HEAD` request is notable — Nmap automatically checks whether a Git repository is accessible from the web server root. This is a common misconfiguration in development environments where source code is deployed with `.git/` directories intact, potentially exposing commit history, credentials stored in the codebase, and internal file paths.
 
-### FTP default credential probe
+### FTP Default Credential Probe
+
+The NSE FTP scripts automatically tested anonymous access:
 
 ```
-Request: USER anonymous
-Request: AUTH TLS
-Request: SYST
+Request:  USER anonymous
+Request:  AUTH TLS
+Request:  SYST
 Response: 331 Please specify the password
 Response: 530 Please login with USER and PASS
 ```
 
-Nmap probes FTP with anonymous credentials automatically. Aggressive scans are not purely passive — they actively test service configurations.
+The aggressive scan performed an active credential test against FTP without any additional configuration — demonstrating that `-A` goes beyond passive enumeration into active service interrogation.
 
-### Nmap NSE fingerprint in SSH traffic
+### Nmap Tool Fingerprint in SSH Traffic
+
+A distinctive protocol banner appears in the SSH traffic generated by the NSE SSH module:
 
 ```
 Client: Protocol (SSH-1.5-NmapNSE_1.0)
 ```
 
-Nmap's SSH NSE module explicitly identifies itself in the protocol banner. This string is a definitive IOC for Nmap aggressive scanning — irrefutable and requiring no interpretation.
+This string is embedded by Nmap's SSH scripting engine in the client protocol handshake. It is a definitive tool fingerprint requiring no analysis — any network monitoring solution capturing SSH traffic during this scan would see `NmapNSE_1.0` explicitly identifying the source as Nmap.
 
-### OS detection — no exact match
+### OS Detection — No Exact Match
 
-A TCP/IP fingerprint was generated but no exact OS match was found. This is expected for modern Linux kernels with randomised IP IDs and TCP timestamps. OS detection failure is itself a defensive data point worth noting.
-
----
-
-## Attacker Perspective
-Complete service enumeration, default credential testing, web path probing, OS fingerprinting, and traceroute in one command. The `.git/HEAD` and WebDAV checks demonstrate that aggressive scans test for misconfigurations, not just open ports.
-
-## Defender Perspective
-An explosion of mixed-protocol traffic — FTP probes, HTTP requests to unusual paths, SSH connections, ICMP traceroute — all from the same source IP within 25 seconds. The `SSH-1.5-NmapNSE_1.0` banner is a definitive Nmap fingerprint requiring no analysis tools to interpret.
+A TCP/IP fingerprint was generated but no exact OS match was returned. Modern Linux kernels with randomised IP ID fields and TCP timestamps resist Nmap's fingerprinting database. The fingerprint was submitted but the inconclusive result is itself informative — the target's kernel hardening configuration is sufficient to defeat signature-based OS detection.
 
 ---
 
-## Screenshot
+## Evidence
 
-**Aggressive scan: multi-protocol packet list with FTP USER anonymous probe expanded in middle pane**
+**Figure 1 — Active reconnaissance: mixed-protocol packet list with FTP USER anonymous probe expanded**
 
-![Aggressive scan FTP anonymous probe](screenshots/aggressive-scan.png)
+*Packet list shows FTP, HTTP, SSH, and TCP protocols in rapid succession from single source. Middle pane shows `USER anonymous\r\n` — automatic default credential test by NSE FTP script.*
+
+![Active recon NSE FTP anonymous probe](screenshots/active-recon-nse-ftp-anonymous-probe.png)
 
 ---
 
 ## Key Findings
 
-- `SSH-1.5-NmapNSE_1.0` banner — definitive Nmap tool fingerprint in SSH traffic
-- `GET /.git/HEAD` — automatic check for exposed Git repositories
-- `USER anonymous` FTP probe — default credential testing built into NSE scripts
-- `PROPFIND /` — WebDAV access check (potential file upload path)
-- 2896 total packets in 25 seconds — highest-volume scan; unmistakable in any IDS
-- OS fingerprint generated but no exact match — modern Ubuntu kernel resists fingerprinting
+- **`SSH-1.5-NmapNSE_1.0`** in SSH client banner — definitive Nmap tool fingerprint, irrefutable IOC
+- **`GET /.git/HEAD`** — automated Git repository exposure check; common misconfiguration target
+- **`USER anonymous`** FTP probe — default credential testing built into NSE without additional flags
+- **`PROPFIND /`** — WebDAV access check; potential file write vector if enabled
+- **2,896 packets in 25.68 seconds** — highest-volume scan in the reconnaissance sequence
+- **OS fingerprint inconclusive** — modern Ubuntu kernel successfully resisted exact OS identification
+- **`/HNAP1` and `/evox/about` probes** — router/device admin panel detection (false positive in this environment but significant on actual network infrastructure)
 
 ---
 
 ## MITRE ATT&CK
 
-| ID | Technique |
-|----|-----------|
-| T1595 | Active Scanning |
-| T1082 | System Information Discovery |
-| T1046 | Network Service Scanning |
+| ID | Technique | Tactic |
+|----|-----------|--------|
+| T1595 | Active Scanning | Reconnaissance |
+| T1082 | System Information Discovery | Discovery |
+| T1046 | Network Service Scanning | Discovery |
 
 ---
 
-## Defensive Recommendations
+## Detection Recommendations
 
-- IDS signature: alert on `SSH-1.5-NmapNSE_1.0` in SSH client protocol banners
-- WAF rule: block requests to `/.git/HEAD`, `/HNAP1`, `/evox/about`, `/sdk` — no legitimate user requests these paths
-- Disable WebDAV: `a2dismod dav` in Apache unless explicitly required
-- Protect `.git` in Apache: `<Directory "*.git"> Deny from all </Directory>`
-- Rate limiting: any source generating >100 mixed-protocol requests in 30 seconds triggers an automated block
+- **IDS signature:** Alert on `SSH-1.5-NmapNSE_1.0` in SSH client protocol banners — this string explicitly identifies Nmap NSE and has no legitimate equivalent
+- **WAF rule:** Block requests to `/.git/HEAD`, `/HNAP1`, `/evox/about`, `/sdk` — these paths have no legitimate purpose on a standard web server and are exclusively associated with scanner enumeration
+- **Git repository protection:** Ensure `.git/` directories are not accessible from the web root; add the following to Apache configuration:
+  ```apache
+  <DirectoryMatch "\.git">
+      Require all denied
+  </DirectoryMatch>
+  ```
+- **Disable WebDAV** unless explicitly required: `a2dismod dav` — PROPFIND requests from untrusted sources indicate active enumeration
+- **Rate limiting:** Any source generating more than 100 mixed-protocol requests within 30 seconds should trigger an automated block at the perimeter
