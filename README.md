@@ -28,17 +28,17 @@ A hands-on network security lab documenting real packet captures across three an
 
 ```
 ┌─────────────────────────────────────────────────┐
-│            VMware Host-only Network              │
+│            VMware Host-only Network             │
 │               192.168.110.0/24                  │
-│                                                  │
-│  ┌─────────────────┐    ┌─────────────────────┐  │
-│  │   Kali Linux    │    │   Ubuntu Server     │  │
-│  │ 192.168.110.132 │◄──►│  192.168.110.130    │  │
-│  │   (Attacker)    │    │  FTP · SSH · HTTP   │  │
-│  └─────────────────┘    └─────────────────────┘  │
-│                                                  │
-│  Gateway: 192.168.110.1                          │
-│  DHCP:    192.168.110.254                        │
+│                                                 │
+│  ┌─────────────────┐    ┌─────────────────────┐ │
+│  │   Kali Linux    │    │   Ubuntu Server     │ │
+│  │ 192.168.110.132 │◄──►│  192.168.110.130    │ │
+│  │   (Attacker)    │    │  FTP · SSH · HTTP   │ │
+│  └─────────────────┘    └─────────────────────┘ │
+│                                                 │
+│  Gateway: 192.168.110.1                         │
+│  DHCP:    192.168.110.254                       │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -57,6 +57,7 @@ wireshark-network-traffic-analysis-lab/
 │   ├── tcp-syn-scan.md
 │   ├── service-version-detection.md
 │   ├── aggressive-scan.md
+│   ├── nmap-terminal-output.txt
 │   └── screenshots/
 │
 ├── authentication-attacks/
