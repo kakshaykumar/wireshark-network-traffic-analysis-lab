@@ -2,7 +2,7 @@
 
 ## Overview
 
-This analysis places FTP and SSH side by side to demonstrate how protocol selection determines whether a user session is protected or exposed. Both protocols were used to authenticate the same account to the same host. The resulting captures illustrate a fundamental principle in network security: the action being performed matters far less than the protocol carrying it.
+This analysis places FTP and SSH side by side to demonstrate how protocol selection determines whether a user session is protected or exposed. Both protocols were used to authenticate the same account to the same host. The resulting captures illustrate a fundamental principle in network security: the same login activity looks completely different depending on the protocol. In FTP and HTTP, credentials were visible directly in packet captures. In SSH, the connection behavior was visible, but the payload was encrypted.
 
 **Capture files:**
 - FTP: [`ftp-session-credential-exposure.pcapng`](../pcap-files/authentication-attacks/ftp-session-credential-exposure.pcapng)
