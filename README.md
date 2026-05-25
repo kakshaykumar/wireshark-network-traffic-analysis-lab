@@ -1,6 +1,6 @@
 # Network Threat Investigation
 
-Network traffic analysis project documenting packet-level investigation of attacker reconnaissance, credential attacks, and protocol vulnerabilities using Wireshark. Conducted in an isolated VMware lab environment with Kali Linux as the attack platform and Ubuntu as the target. Each scenario includes attacker simulation, traffic capture, defender-perspective analysis, MITRE ATT&CK mapping, and detection recommendations.
+Network traffic analysis project documenting packet-level investigation of attacker reconnaissance, credential attacks, and protocol vulnerabilities using Wireshark. Conducted in an controlled VMware lab environment with Kali Linux as the attack platform and Ubuntu as the target. Each scenario includes attacker simulation, traffic capture, defender-perspective analysis, MITRE ATT&CK mapping, and detection recommendations.
 
 ---
 
@@ -169,4 +169,4 @@ Full mapping with evidence and IOCs: [mitre-attack-technique-mapping.md](mitre-a
 
 ---
 
-*Conducted: May 2026 · VMware Workstation · Isolated Host-only network*
+*Conducted: May 2026 · VMware Workstation · Controlled Host-only network*
