@@ -1,25 +1,33 @@
-# SSH Brute Force
+# SSH Credential Attack Analysis
 
-## Objective
-Demonstrate that SSH brute force attacks are detectable through connection pattern analysis even though SSH encryption prevents any credential visibility.
+## Overview
+
+A brute-force credential attack was executed against the SSH service running on the target host to assess authentication resilience and evaluate network-level detectability. SSH encrypts all post-handshake traffic, meaning the authentication content itself is not visible in packet captures. However, the connection behaviour produced by automated tooling creates a distinct pattern that is reliably detectable through traffic analysis — and the attack tool can be fingerprinted from the SSH protocol banner without inspecting any encrypted payload.
+
+**Capture file:** [`ssh-credential-attack.pcapng`](../pcap-files/authentication-attacks/ssh-credential-attack.pcapng)
 
 ---
 
-## Lab Setup
+## Environment
+
 | Property | Value |
 |----------|-------|
-| Attacker | Kali Linux — 192.168.110.132 |
-| Target | Ubuntu 22.04 — 192.168.110.130 (SSH port 22) |
-| Capture interface | Ubuntu ens37 (defender perspective) |
-| Capture file | `ch2a-ssh-bruteforce.pcapng` |
+| Source | 192.168.110.132 (Kali Linux) |
+| Target | 192.168.110.130 (Ubuntu — OpenSSH 10.2p1, port 22) |
+| Interface captured | Ubuntu ens37 (defender perspective) |
+| Capture perspective | Inbound traffic at target |
 
 ---
 
-## Command Used
+## Commands Used
 
 ```bash
-hydra -l labuser -P ~/lab_wordlist.txt ssh://192.168.110.130 -t 4 -V
+# SSH brute force — 4 parallel threads, verbose output
+# Wordlist: wordlist-credentials.txt (12 entries)
+hydra -l labuser -P wordlist-credentials.txt ssh://192.168.110.130 -t 4 -V
 ```
+
+**Wordlist used:** [`wordlist-credentials.txt`](wordlist-credentials.txt)
 
 ---
 
@@ -31,96 +39,89 @@ tcp.port == 22
 
 ---
 
-## Traffic Analysis
+## Analysis
 
-### Connection pattern — the brute force signature
+### Connection Pattern
 
-Five TCP conversations to port 22 from the same source IP within milliseconds of each other. Hydra ran with `-t 4` (4 parallel threads) — each connection attempts multiple passwords simultaneously, so `labuser` (entry 8 of 12) was found after approximately two parallel rounds:
+Five TCP conversations were established to port 22 from the same source IP (192.168.110.132) within seconds:
 
-```
-192.168.110.132:37932 ↔ 192.168.110.130:22   22 packets   0.078s
-192.168.110.132:37946 ↔ 192.168.110.130:22   27 packets   6.242s
-192.168.110.132:37962 ↔ 192.168.110.130:22   27 packets   6.251s
-192.168.110.132:37968 ↔ 192.168.110.130:22   27 packets   4.718s
-192.168.110.132:37972 ↔ 192.168.110.130:22   28 packets   3.585s
-```
+| Connection | Packets | Duration |
+|-----------|---------|---------|
+| 192.168.110.132:37932 → :22 | 22 | 0.078s |
+| 192.168.110.132:37946 → :22 | 27 | 6.242s |
+| 192.168.110.132:37962 → :22 | 27 | 6.251s |
+| 192.168.110.132:37968 → :22 | 27 | 4.718s |
+| 192.168.110.132:37972 → :22 | 28 | 3.585s |
 
-Five connections covering a 12-entry wordlist is consistent with parallel threading — not a one-to-one connection-per-password relationship. No legitimate user opens and closes SSH connections five times in a few seconds regardless of thread count.
+Hydra was configured with `-t 4` (4 parallel threads), allowing multiple authentication attempts to proceed simultaneously. The wordlist entry `labuser` at position 8 was identified across the parallel thread pool, resulting in 5 connections rather than 12 sequential attempts. The correct credential was confirmed: `labuser:labuser`.
 
-### Each connection lifecycle
+### Connection Lifecycle
+
+Each connection follows an identical pattern:
 
 ```
 [SYN] → [SYN-ACK] → [ACK]                    ← three-way handshake
-Client: Protocol (SSH-2.0-libssh_0.11.3)      ← Hydra fingerprint
-Server: Protocol (SSH-2.0-OpenSSH_10.2p1)     ← server banner
-[Key Exchange Init]                            ← encryption negotiation begins
-[ECDH Key Exchange Reply, New Keys]            ← session is now encrypted
-[Encrypted packets]                            ← auth attempt — not visible
+Client: SSH-2.0-libssh_0.11.3                 ← Hydra tool fingerprint
+Server: SSH-2.0-OpenSSH_10.2p1                ← target service version
+[Key Exchange Init]
+[ECDH Key Exchange Reply, New Keys]           ← session fully encrypted
+[Encrypted packets — auth attempt not visible]
 [FIN-ACK] → [FIN-ACK]                         ← connection closed
 ```
 
-After `New Keys`, all traffic is encrypted. The authentication result is not visible.
-
-### Hydra tool fingerprint
+### Tool Fingerprint — Hydra Identified via SSH Banner
 
 ```
 SSH-2.0-libssh_0.11.3
 ```
 
-Hydra uses the `libssh` library, not OpenSSH. A real user connecting via `ssh` would show `SSH-2.0-OpenSSH_x.x`. The `libssh` string in an SSH Client Protocol packet is a fingerprint for automated SSH tooling.
+Hydra's SSH module uses the `libssh` library rather than the standard OpenSSH client. A user authenticating with the native `ssh` command would produce `SSH-2.0-OpenSSH_x.x`. The presence of `libssh` in an SSH Client Protocol banner indicates automated tooling. This IOC is present in every connection in the capture — 5 separate occurrences — and requires no inspection of encrypted content to identify.
 
-### Encryption confirmed
+### Encryption Confirmed
 
-Middle pane for any post-handshake packet:
+Expanding any post-handshake packet in the capture confirms encryption is effective:
+
 ```
 SSH Version 2 (encryption: chacha20-poly1305@openssh.com)
-Encrypted Packet: [hex blob — no readable content]
-MAC: [hex blob]
+Encrypted Packet: [hex — no readable content]
+MAC: [message authentication code]
 ```
 
-Zero readable content. Credentials, commands, and responses are cryptographically opaque.
+The authentication credentials, commands issued, and any response from the server are cryptographically protected. Detection of this attack relies entirely on connection behaviour and protocol metadata — not packet content.
 
 ---
 
-## Attacker Perspective
-Hydra ran 4 parallel threads against the 12-entry wordlist. The correct credential (`labuser` — entry 8) was found after approximately two parallel rounds. SSH provided no information about individual authentication failures — each failed attempt resulted in connection closure with no error detail returned.
+## Evidence
 
-## Defender Perspective
-Five complete SSH handshakes from 192.168.110.132 within seconds. `SSH-2.0-libssh_0.11.3` in each connection identifies the tool as Hydra. Even without seeing credentials: same source IP + multiple rapid SSH connections + `libssh` banner = high-confidence brute force alert. A threshold rule of 3+ SSH connections from one source within 10 seconds catches this regardless of thread count.
+**Figure 1 — SSH brute-force connections: repeated sessions to port 22 with Hydra fingerprint and encrypted payload visible**
 
----
+*Packet list shows rapid repeated connections. Middle pane confirms chacha20-poly1305 encryption — no credential content visible.*
 
-## Screenshot
-
-**SSH brute force: repeated connections in packet list. Middle pane shows chacha20-poly1305 encryption — zero credential visibility.**
-
-![SSH brute force encrypted](screenshots/ssh-bruteforce.png)
+![SSH credential attack Hydra fingerprint](screenshots/ssh-credential-attack-hydra-fingerprint.png)
 
 ---
 
 ## Key Findings
 
-- Credentials are NOT visible — SSH encryption is effective at the packet level
-- Attack IS detectable — 5 rapid connections from one source is the behavioural fingerprint
-- Hydra ran with `-t 4` (4 parallel threads) — 5 connections covering 12 wordlist entries is consistent with parallel execution
-- `labuser` is entry 8 of 12 — found after approximately two parallel rounds
-- Hydra identified by `SSH-2.0-libssh_0.11.3` — not the OpenSSH client string a human uses
-- Encryption algorithm: chacha20-poly1305 — modern, secure cipher
-- Detection method: connection rate analysis, not content inspection
+- **Credentials not visible** — SSH encryption is effective; authentication content is fully protected at the packet level
+- **Attack detectable by behaviour** — 5 rapid connections from the same source to port 22 within seconds is the brute-force pattern
+- **Hydra fingerprinted** — `SSH-2.0-libssh_0.11.3` in the SSH client banner is a reliable IOC for Hydra; a human user would show `SSH-2.0-OpenSSH_x.x`
+- **Parallel threading** — `-t 4` flag caused Hydra to attempt 4 credentials simultaneously, finding the match (`labuser`) in 5 connections rather than 8 sequential attempts
+- **Encryption algorithm confirmed** — `chacha20-poly1305@openssh.com`: modern, authenticated cipher; no known practical weakness
 
 ---
 
 ## MITRE ATT&CK
 
-| ID | Technique |
-|----|-----------|
-| T1110.001 | Brute Force: Password Guessing |
+| ID | Technique | Tactic |
+|----|-----------|--------|
+| T1110.001 | Brute Force: Password Guessing | Credential Access |
 
 ---
 
-## Defensive Recommendations
+## Detection Recommendations
 
-- Fail2ban: block IPs after 3–5 failed SSH authentication attempts within 60 seconds
-- SSH key authentication: set `PasswordAuthentication no` in `/etc/ssh/sshd_config` — eliminates brute force viability entirely
-- IDS rule: alert on `libssh` in SSH Client Protocol banner — automated tooling, not a human user
-- SIEM correlation: rapid SSH connections from one IP + `libssh` banner = high-confidence Hydra brute force alert
+- **Fail2ban:** Block source IPs after 3–5 failed SSH authentication attempts within 60 seconds
+- **SSH key authentication:** Set `PasswordAuthentication no` in `/etc/ssh/sshd_config` — eliminates password brute-force viability entirely regardless of tool or wordlist size
+- **IDS rule:** Alert on `libssh` in SSH Client Protocol banner — identifies automated SSH tooling; no legitimate interactive user produces this string
+- **SIEM correlation:** Multiple SSH connections from one source IP within 10 seconds + `libssh` client banner = high-confidence Hydra brute-force alert
