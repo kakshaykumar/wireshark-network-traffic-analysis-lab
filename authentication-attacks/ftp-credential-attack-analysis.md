@@ -1,25 +1,33 @@
-# FTP Brute Force
+# FTP Credential Attack Analysis
 
-## Objective
-Demonstrate that FTP transmits every authentication attempt — including every tested password — in cleartext, making the entire brute force attack visible to any network observer without any decryption.
+## Overview
+
+A brute-force credential attack was executed against the FTP service on the target host. Unlike SSH, FTP transmits all authentication data in cleartext — every username and password attempt is transmitted as readable text on the wire. The complete attack, including every tested credential and the confirmed successful entry, is recoverable from the packet capture without any decryption or specialised tooling.
+
+**Capture file:** [`ftp-credential-attack.pcapng`](../pcap-files/authentication-attacks/ftp-credential-attack.pcapng)
 
 ---
 
-## Lab Setup
+## Environment
+
 | Property | Value |
 |----------|-------|
-| Attacker | Kali Linux — 192.168.110.132 |
-| Target | Ubuntu 22.04 — 192.168.110.130 (vsftpd 3.0.5, port 21) |
-| Capture interface | Ubuntu ens37 (defender perspective) |
-| Capture file | `ch2b-ftp-bruteforce.pcapng` |
+| Source | 192.168.110.132 (Kali Linux) |
+| Target | 192.168.110.130 (Ubuntu — vsftpd 3.0.5, port 21) |
+| Interface captured | Ubuntu ens37 (defender perspective) |
+| Capture perspective | Inbound traffic at target |
 
 ---
 
-## Command Used
+## Commands Used
 
 ```bash
-hydra -l labuser -P ~/lab_wordlist.txt ftp://192.168.110.130 -V
+# FTP brute force — verbose output, sequential attempts
+# Wordlist: wordlist-credentials.txt (12 entries)
+hydra -l labuser -P wordlist-credentials.txt ftp://192.168.110.130 -V
 ```
+
+**Wordlist used:** [`wordlist-credentials.txt`](wordlist-credentials.txt)
 
 ---
 
@@ -31,80 +39,96 @@ ftp
 
 ---
 
-## Traffic Analysis
+## Analysis
 
-### Every credential attempt is readable
+### Authentication Attempts — Fully Visible in Plaintext
 
-FTP provides zero encryption. Every packet in the authentication sequence appears in the Wireshark packet list as readable text:
+FTP provides no encryption at any layer. Every command exchanged between client and server appears directly in the Wireshark packet list as readable text without any filtering, decoding, or analysis:
 
 ```
-Response: 220 (vsFTPd 3.0.5)     ← server banner — version exposed
-Request:  USER labuser            ← username in plaintext
+Response: 220 (vsFTPd 3.0.5)        ← service banner — software version exposed
+Request:  USER labuser               ← target username in plaintext
 Response: 331 Please specify the password.
-Request:  PASS admin              ← attempt 1 — visible
-Request:  PASS password           ← attempt 2 — visible
-Request:  PASS 123456             ← attempt 3 — visible
-Request:  PASS welcome            ← attempt 4 — visible
-Request:  PASS letmein            ← attempt 5 — visible
-Request:  PASS qwerty             ← attempt 6 — visible
-Request:  PASS labpass123         ← attempt 7 — visible
-Request:  PASS labuser            ← attempt 8 — CORRECT PASSWORD
+Request:  PASS welcome               ← attempt 1
+Response: 530 Login incorrect.
+Request:  PASS adminpass123          ← attempt 2
+Response: 530 Login incorrect.
+Request:  PASS password              ← attempt 3
+Response: 530 Login incorrect.
+Request:  PASS 123456                ← attempt 4
+Response: 530 Login incorrect.
+Request:  PASS qwerty                ← attempt 5
+Response: 530 Login incorrect.
+Request:  PASS password123           ← attempt 6
+Response: 530 Login incorrect.
+Request:  PASS test123               ← attempt 7
+Response: 530 Login incorrect.
+Request:  PASS admin                 ← attempt 8
+Response: 530 Login incorrect.
+Request:  PASS labuser               ← attempt 9 — correct credential
 Response: 230 Login successful.
-Request:  PASS test123            ← attempt 9 (parallel thread, sent after success)
-Request:  PASS password123        ← attempt 10 — visible
-Request:  PASS admin123           ← attempt 11 — visible
-Request:  PASS adminpass123       ← attempt 12 — visible
-Response: 530 Login incorrect.    ← all other attempts failed
 ```
 
-### Wordlist reconstructible from capture
+### Information Exposed in the 220 Banner
 
-An observer recording this traffic can recover the complete tested wordlist, the successful credential (`labuser/labuser`), and the exact service version — all from passive observation.
+The server's initial 220 response discloses the FTP daemon name and version before any authentication occurs:
 
-### Weak credential finding
+```
+220 (vsFTPd 3.0.5)
+```
 
-The correct credential was `labuser/labuser` — password equals username. It appeared as the 9th attempt in a 12-entry wordlist. Predictable credential patterns dramatically reduce brute force time.
+This version string is returned to any client that connects to port 21 — no authentication is required to receive it.
+
+### Credential Recovery
+
+An observer capturing this traffic can recover the following without any analysis tools:
+
+| Data | Value |
+|------|-------|
+| Username | labuser |
+| Correct password | labuser |
+| Attempts before success | 9 |
+| All tested passwords | welcome, adminpass123, password, 123456, qwerty, password123, test123, admin, labuser |
+| FTP software | vsftpd 3.0.5 |
+
+### Weak Credential Observation
+
+The successful credential `labuser:labuser` uses password equal to username — one of the most commonly targeted patterns in credential attacks. It appeared at position 9 in a 12-entry wordlist, confirming that minimal wordlist effort is sufficient to compromise accounts with predictable passwords.
 
 ---
 
-## Attacker Perspective
-Hydra completed the attack in under 5 seconds. FTP provided no resistance — every attempt was accepted, processed, and responded to with clear success/failure in plaintext.
+## Evidence
 
-## Defender Perspective
-From Ubuntu's interface: 12 FTP connections each transmitting USER and PASS commands in plaintext, followed by 530 for failures and 230 for success. The complete attack — tool, username, every password tested, and the successful credential — is documented in the capture with no analysis required.
+**Figure 1 — FTP brute-force: all PASS commands visible in packet list. Response 230 Login successful visible at the bottom.**
 
----
-
-## Screenshot
-
-**FTP brute force: all password attempts visible in the packet list. Response 230 Login successful visible at the bottom.**
-
-![FTP brute force plaintext passwords](screenshots/ftp-brute.png)
+![FTP cleartext credential spray](screenshots/ftp-cleartext-credential-spray.png)
 
 ---
 
 ## Key Findings
 
-- All credentials visible in plaintext — no decryption, no tooling, no analysis required
-- Server version exposed — `vsftpd 3.0.5` in the 220 banner
-- Complete wordlist recoverable — all 12 tested passwords visible as sequential PASS packets
-- Successful credential captured — `labuser/labuser` (password = username)
-- 192 total packets — small capture, complete authentication story
+- **All credentials visible in plaintext** — no decryption, no specialised tooling required
+- **Service version disclosed pre-authentication** — `vsftpd 3.0.5` in the 220 banner
+- **Entire tested wordlist recoverable** — all 9 PASS attempts visible as sequential FTP packets
+- **Successful credential confirmed** — `labuser:labuser` (password equals username)
+- **192 total packets** — complete attack and authentication story in a small capture file
+- **530 responses confirm failed attempts** — server provides explicit failure confirmation per attempt, accelerating brute-force efficiency
 
 ---
 
 ## MITRE ATT&CK
 
-| ID | Technique |
-|----|-----------|
-| T1110.001 | Brute Force: Password Guessing |
-| T1040 | Network Sniffing |
+| ID | Technique | Tactic |
+|----|-----------|--------|
+| T1110.001 | Brute Force: Password Guessing | Credential Access |
+| T1040 | Network Sniffing | Credential Access |
 
 ---
 
-## Defensive Recommendations
+## Detection Recommendations
 
-- Disable FTP entirely — no scenario justifies FTP over SFTP on a modern system
-- Replace with SFTP — OpenSSH already runs on this host (port 22); configure `Subsystem sftp /usr/lib/openssh/sftp-server`
-- Password policy: enforce that password cannot equal username
-- If FTP must run: configure FTPS (`ssl_enable=YES` in vsftpd.conf) as a minimum
+- **Disable FTP** — no configuration change makes FTP safe for credential transmission; the protocol is architecturally cleartext
+- **Replace with SFTP** — OpenSSH is already running on this host (port 22); configure the SFTP subsystem: `Subsystem sftp /usr/lib/openssh/sftp-server`
+- **Password policy** — enforce that passwords cannot match usernames; implement minimum complexity requirements
+- **If FTP must remain:** configure FTPS (`ssl_enable=YES` in `/etc/vsftpd.conf`) as an absolute minimum; suppress the version banner (`ftpd_banner=FTP Server Ready`)
+- **Network monitoring** — any IDS inspecting port 21 traffic captures FTP credentials without any special configuration; use this visibility for early attack detection
