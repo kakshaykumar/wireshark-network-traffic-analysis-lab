@@ -60,4 +60,4 @@ All techniques observed and documented across the three lab topics.
 ### T1071.004 — DNS
 - DNS response code 3 (NXDOMAIN) for non-existent domain
 - DNS query to 8.8.8.8 directly → internal resolver bypass
-- >20 NXDOMAINs/minute from one host → DGA/C2 high-confidence indicator
+- 20 NXDOMAINs/minute from one host → DGA/C2 high-confidence indicator
